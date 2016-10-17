@@ -30,9 +30,8 @@ THE SOFTWARE.
 
 import sys
 import string
+from time import sleep
 print "using python version %s" % sys.version
-
-
 
 #================================================================================
 #=============================LOG INTO RESDK=====================================
@@ -155,16 +154,17 @@ class ResCollection:
         print('Importing relationship data from %s' % (input_table))
 
         rel_table = [['SAMPLE_NAME','SAMPLE_SLUG','U_ID','BACKGROUND_NAME','GROUP']]
-        
-        f = open(input_table,'r')
-        lines = f.readlines()
-        for line in lines:
-            line = line.rstrip().split('\t')
-            name = line[0]
-            background = line[3]
-            group = line[4]
-            self._background_dict[name]=background
-            self._group_dict[name]=group
+
+        with open(input_table,'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                print(line)
+                line = line.rstrip().split('\t')
+                name = line[0]
+                background = line[3]
+                group = line[4]
+                self._background_dict[name]=background
+                self._group_dict[name]=group
 
 
     def setBackground(self,name,background_name):
@@ -277,6 +277,8 @@ def run_macs14(res_collection,sample_name,useBackground=True,p_value='1e-9'):
 
     genome_string = string.upper(res_collection._genome)
 
+    genome_string = 'hs'
+
     input_dict = {'t':treat_id,
                   'g':genome_string,
                   'pvalue': p_value,
@@ -328,12 +330,23 @@ def main():
     print(res_collection._group_dict['PRIMARY_CHOR_01192016_H3K27AC'])
 
     macs = run_macs14(res_collection,'PRIMARY_CHOR_01192016_H3K27AC',useBackground=True,p_value='1e-9')
+    macs.name ='foo'
+    macs.save()
 
+    while True:
+        macs.update()
+        if macs.status == 'OK' or macs.status == 'ER':
+            break
+        sleep(1)
+
+    if macs.status == 'ER':
+        print(macs.stdout())
+        raise Exception('Macs process failed')
 
     print('============================\n\n\n')
-    print(res.data.get(id=macs.id))
-    print(macs.id)
-
+    print(macs.output)
+    print(macs.download())
+    print(res.data.filter(name="foo", process_type='data:chipseq:macs14:'))
     
     # #only want k27ac datasets
     # names_list = [name for name in res_collection.names() if res_collection.group(name) == 'H3K27AC']
